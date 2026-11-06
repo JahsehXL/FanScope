@@ -28,12 +28,19 @@ class LayoutTests(unittest.TestCase):
                 with patch('collector.tk.Tk', side_effect=create_root):
                     app = App(Path(directory))
                 try:
+                    # Hosted Windows runners use small virtual desktops. Allow the
+                    # off-screen test window to exercise large logical layouts.
+                    app.root.maxsize(app.px(3000), app.px(2000))
                     self.settle(app)
-                    for width, height in ((1160, 800), (980, 720), (800, 600), (740, 460), (1160, 800)):
+                    for width, height in ((1160, 800), (980, 720), (800, 600), (740, 460),
+                                          (520, 460), (1160, 800)):
                         with self.subTest(window=(width, height)):
                             app.root.geometry(f'{app.px(width)}x{app.px(height)}')
                             self.settle(app)
-                            self.assertEqual(app.layout_columns, 2 if width < 960 else 4)
+                            actual_width = app.page.winfo_width()
+                            self.assertEqual(app.layout_columns, 2 if actual_width < app.px(960) else 4)
+                            self.assertEqual(app.activity.grid_info()['row'],
+                                             1 if actual_width < app.px(700) else 0)
                             last_card = app.metric_cards[app.layout_columns - 1]
                             self.assertGreaterEqual(last_card.winfo_x() + last_card.winfo_width(),
                                                     app.metrics.winfo_width() - 1)

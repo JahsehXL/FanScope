@@ -467,7 +467,7 @@ class App:
         width = min(p(1160), right - left - p(40))
         height = min(p(800), bottom - top - p(64))
         self.root.geometry(f'{width}x{height}+{left + (right-left-width)//2}+{top + (bottom-top-height)//2}')
-        self.root.minsize(min(p(740), width), min(p(460), height))
+        self.root.minsize(min(p(520), width), min(p(460), height))
         background, panel = '#F5F6F8', '#FFFFFF'
         ink, muted, border = '#202534', '#6D7483', '#E4E7ED'
         accent, dark = '#E54668', '#202738'
@@ -685,6 +685,16 @@ class App:
             self.steps.grid()
             self.page_subtitle.pack(anchor='w', pady=(self.px(5), 0))
         columns = 2 if width < self.px(960) else 4
+        stacked = width < self.px(700)
+        self.workspace.columnconfigure(0, weight=1 if stacked else 0)
+        self.workspace.columnconfigure(1, weight=0 if stacked else 1)
+        self.workspace.rowconfigure(0, weight=0 if stacked else 1)
+        self.workspace.rowconfigure(1, weight=1 if stacked else 0)
+        self.controls.grid_configure(row=0, column=0, columnspan=2 if stacked else 1,
+                                     padx=(0, 0 if stacked else self.px(18)),
+                                     pady=(0, self.px(18) if stacked else 0))
+        self.activity.grid_configure(row=1 if stacked else 0, column=0 if stacked else 1,
+                                     columnspan=2 if stacked else 1)
         number_width = (width - self.px(48 + (columns-1)*12)) // columns - self.px(48)
         for label, variable in zip(self.metric_numbers, self.count_values.values()):
             size = 28
