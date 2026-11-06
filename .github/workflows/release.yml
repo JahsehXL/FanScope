@@ -14,17 +14,17 @@ jobs:
           python-version: '3.12'
           cache: pip
       - run: python -m pip install -r requirements-dev.txt
-      - run: python -m unittest test_fanscope test_ui -v
-      - run: python verify_collector.py
-      - run: python build_exe.py
+      - run: python -m unittest tests.test_fanscope tests.test_ui -v
+      - run: python scripts/verify_collector.py
+      - run: python scripts/build_exe.py
       - name: Test packaged executable
         shell: pwsh
         env:
           FANSCOPE_HOME: ${{ runner.temp }}/fanscope-portable-home
         run: |
-          $directory = Get-ChildItem release -Directory | Select-Object -First 1
+          $executable = (Resolve-Path app/FanScope.exe).Path
           $destination = Join-Path $env:RUNNER_TEMP 'fanscope-portable-smoke'
-          $process = Start-Process -FilePath "$($directory.FullName)\FanScope.exe" -ArgumentList '--diagnose',('"{0}"' -f $destination) -WorkingDirectory $env:RUNNER_TEMP -Wait -PassThru
+          $process = Start-Process -FilePath $executable -ArgumentList '--diagnose',('"{0}"' -f $destination) -WorkingDirectory $env:RUNNER_TEMP -Wait -PassThru
           if ($process.ExitCode -ne 0) { throw 'Packaged executable test failed' }
           $report = Get-Content (Join-Path $destination 'report.json') | ConvertFrom-Json
           if (-not $report.ok) { throw 'Packaged test report failed' }
@@ -34,5 +34,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $files = Get-ChildItem release -Recurse -File | Where-Object { $_.Extension -eq '.zip' -or $_.Name -eq 'SHA256SUMS.txt' }
+          $files = Get-ChildItem dist -Recurse -File | Where-Object { $_.Extension -eq '.zip' -or $_.Name -eq 'SHA256SUMS.txt' }
           gh release create $env:GITHUB_REF_NAME --verify-tag --generate-notes --title "FanScope $env:GITHUB_REF_NAME" @($files.FullName)

@@ -26,7 +26,7 @@ class LayoutTests(unittest.TestCase):
             for scale in (1, 1.25, 1.5, 2):
                 with self.subTest(scale=scale):
                     environment = dict(os.environ, FANSCOPE_TEST_UI_SCALE=str(scale))
-                    result = subprocess.run([sys.executable, '-m', 'unittest', 'test_ui', '-v'],
+                    result = subprocess.run([sys.executable, '-m', 'unittest', 'tests.test_ui', '-v'],
                                             env=environment, capture_output=True, text=True, timeout=120)
                     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             return
@@ -41,6 +41,7 @@ class LayoutTests(unittest.TestCase):
             with patch('collector.tk.Tk', ScaledTk):
                 app = App(Path(directory))
             try:
+                self.assertTrue(hasattr(app, 'app_icon'))
                 # Hosted Windows runners use small virtual desktops. Allow the
                 # off-screen test window to exercise large logical layouts.
                 app.root.maxsize(app.px(3000), app.px(2000))

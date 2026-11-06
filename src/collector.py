@@ -17,6 +17,8 @@ from tkinter import filedialog, messagebox
 from urllib.parse import parse_qs, urlsplit
 
 ROOT = Path(__file__).resolve().parent
+if not getattr(sys, 'frozen', False):
+    ROOT = ROOT.parent
 
 
 def resolve_app_home():
@@ -26,7 +28,7 @@ def resolve_app_home():
 
 
 APP_HOME = resolve_app_home()
-APP_VERSION = '1.4.1'
+APP_VERSION = '1.4.2'
 ENDPOINT = '/aweme/v1/web/user/follower/list/'
 DEFAULT_SCROLL_INTERVAL = 0.1
 MIN_SCROLL_INTERVAL = 0.05

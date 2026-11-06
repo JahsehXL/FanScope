@@ -3,7 +3,11 @@
 import json
 import queue
 import time
+import sys
 from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / 'src'))
 
 from openpyxl import load_workbook
 from playwright.sync_api import sync_playwright
@@ -108,7 +112,7 @@ def verify_browser(root):
 
 if __name__ == '__main__':
     from datetime import datetime
-    root = Path(__file__).parent / '.verification' / datetime.now().strftime('%Y%m%d-%H%M%S')
+    root = ROOT / 'work' / 'verification' / datetime.now().strftime('%Y%m%d-%H%M%S')
     root.mkdir(parents=True, exist_ok=True)
     verify_store(root)
     verify_browser(root)

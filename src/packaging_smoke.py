@@ -74,6 +74,7 @@ def run(destination):
         report['checks'].append('bundled Playwright driver, Edge launch, offline scrolling, network capture and auto export')
 
         app = App(destination / 'gui-records')
+        assert hasattr(app, 'app_icon')
         assert all(variable.get() == '0' for variable in app.count_values.values())
         app.events.put(('count', {'history': 3506, 'session': 20, 'new': 2, 'total': 3508}))
         app.poll()

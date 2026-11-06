@@ -9,6 +9,37 @@
 
 FanScope 使用专用 Edge 会话，保存网页实际收到的抖音粉丝列表响应。也可以离线导入已有 HAR，按 UID 去重，并按每位粉丝自身的粉丝数量导出 Excel。
 
+## 先找到你要的文件
+
+| 你要做什么 | 位置 |
+| --- | --- |
+| 直接打开本地软件 | 双击根目录 **打开软件.cmd**，或运行 `app/FanScope.exe` |
+| 从 GitHub 下载软件 | [下载 Windows 发行版](https://github.com/JahsehXL/FanScope/releases/latest)，解压后运行其中的 `FanScope.exe` |
+| 看核心源代码 | [src/collector.py](src/collector.py)，包含采集、数据处理和桌面界面 |
+| 运行或修改源码 | 双击 **运行源码.cmd**，开发命令见下文 |
+| 看测试和构建流程 | [tests](tests) 和 [scripts](scripts) |
+| 看隐私说明和更新记录 | [docs](docs) |
+
+GitHub 提供可审查的源码，编译后的 Windows 程序通过 Releases 分发。本地项目统一使用 `app/` 放置最新版 EXE。构建脚本会自动更新这个位置，历史版本安装包保存在 `dist/`。
+
+```text
+FanScope/
+  打开软件.cmd             双击打开 app 中的软件
+  运行源码.cmd             建立环境并运行源码
+  app/                     本地最新版 EXE 与使用入口
+    FanScope.exe           本地构建或下载后放在这里
+  src/                     软件源代码（.py）
+    collector.py           主程序、采集逻辑与桌面界面
+    packaging_smoke.py     打包后的自检逻辑
+  tests/                   自动化测试
+  scripts/                 构建与模拟采集检查脚本
+  docs/                    隐私说明、更新记录
+  assets/                  图标、截图、字体许可
+  .github/                 GitHub 工作流与贡献、安全说明
+  dist/                    本地版本安装包（构建生成）
+  work/                    本地构建缓存、检查记录和历史归档
+```
+
 ## 本地处理与网络行为
 
 粉丝去重、数量排序、HAR 解析和 Excel 生成均在本机执行。采集批次、表格和专用浏览器登录状态保存在当前 Windows 用户的应用数据目录。项目代码未实现向维护者服务器自动上传粉丝数据、HAR 或 Cookie 的功能，也未集成遥测和自动更新服务。
@@ -20,7 +51,7 @@ FanScope 使用专用 Edge 会话，保存网页实际收到的抖音粉丝列�
 | 源码首次安装依赖 | 从所配置的 Python 软件源下载依赖，需要网络 |
 | 点击表格内的抖音主页链接 | 由用户打开的浏览器访问对应网页，需要网络 |
 
-浏览器会按网页逻辑发送请求和登录凭据。专用配置目录中的登录状态以及本机 HAR、表格仍应妥善保管。当前回归测试在禁止 Python 创建网络套接字的条件下验证 HAR 导入和 Excel 导出，详细数据说明见 [PRIVACY.md](PRIVACY.md)。
+浏览器会按网页逻辑发送请求和登录凭据。专用配置目录中的登录状态以及本机 HAR、表格仍应妥善保管。当前回归测试在禁止 Python 创建网络套接字的条件下验证 HAR 导入和 Excel 导出，详细数据说明见 [PRIVACY.md](docs/PRIVACY.md)。
 
 ## 浏览器会话与访问限制
 
@@ -30,7 +61,7 @@ FanScope 使用专用 Edge 会话，保存网页实际收到的抖音粉丝列�
 
 ![FanScope 桌面界面，展示采集数量、导出范围与日志区域](assets/screenshot.png)
 
-**实验性项目。运行前请确认你对目标数据的处理具有适当授权，并遵守适用法律和平台协议。** 平台协议对自动化收集有明确限制，软件许可与数据使用授权需要分别确认。请阅读 [使用边界与数据说明](PRIVACY.md)。
+**实验性项目。运行前请确认你对目标数据的处理具有适当授权，并遵守适用法律和平台协议。** 平台协议对自动化收集有明确限制，软件许可与数据使用授权需要分别确认。请阅读 [使用边界与数据说明](docs/PRIVACY.md)。
 
 ## 下载
 
@@ -103,15 +134,15 @@ HAR 可能包含登录凭据及其他个人信息，请保存在自己的设备�
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe collector.py
+.\.venv\Scripts\python.exe src/collector.py
 ```
 
-Windows 也可双击 `start.cmd`，首次会在项目内创建虚拟环境并安装依赖。
+Windows 也可双击 `运行源码.cmd`，首次会在项目内创建虚拟环境并安装依赖。
 
 离线导入示例。
 
 ```powershell
-.\.venv\Scripts\python.exe collector.py --import-har "example.har" --data-dir ".\local-data"
+.\.venv\Scripts\python.exe src/collector.py --import-har "example.har" --data-dir ".\local-data"
 ```
 
 CLI 导入默认导出历史合并范围。GUI 导入使用界面所选范围。一个 HAR 请只包含一个目标账号，多账号文件会报错，已经读取的批次仍保存在本机。
@@ -120,12 +151,12 @@ CLI 导入默认导出历史合并范围。GUI 导入使用界面所选范围。
 
 ```powershell
 .\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
-.\.venv\Scripts\python.exe -m unittest test_fanscope test_ui -v
-.\.venv\Scripts\python.exe verify_collector.py
-.\.venv\Scripts\python.exe build_exe.py
+.\.venv\Scripts\python.exe -m unittest tests.test_fanscope tests.test_ui -v
+.\.venv\Scripts\python.exe scripts/verify_collector.py
+.\.venv\Scripts\python.exe scripts/build_exe.py
 ```
 
-发布包位于 `release/v版本号/`。`FanScope.exe --diagnose <测试输出目录>` 可以检查打包后的界面、Edge 驱动、模拟网络采集和 Excel 导出。模拟验证会拦截全部浏览器请求，使用虚构账号。
+构建完成后，最新版软件位于 `app/FanScope.exe`，版本安装包位于 `dist/v版本号/`，构建与检查记录位于 `work/`。`FanScope.exe --diagnose <测试输出目录>` 可以检查打包后的界面、Edge 驱动、模拟网络采集和 Excel 导出。模拟验证会拦截全部浏览器请求，使用虚构账号。
 
 界面使用 CustomTkinter 和 Pillow，构建脚本显式收集主题、字体资源及第三方许可证。发布使用单文件 EXE，并通过打包后的自检确认资源可以正常加载。
 
@@ -144,7 +175,7 @@ CLI 导入默认导出历史合并范围。GUI 导入使用界面所选范围。
 
 ## 贡献
 
-欢迎提交页面适配、数据准确性、隐私最小化和界面改进。贡献方式见 [CONTRIBUTING.md](CONTRIBUTING.md)，安全问题见 [SECURITY.md](SECURITY.md)。
+欢迎提交页面适配、数据准确性、隐私最小化和界面改进。贡献方式见 [CONTRIBUTING.md](.github/CONTRIBUTING.md)，安全问题见 [SECURITY.md](.github/SECURITY.md)。
 
 ## License
 

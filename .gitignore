@@ -18,3 +18,6 @@ browser-profile/
 .env
 .env.*
 !.env.example
+work/
+app/*
+!app/README.md

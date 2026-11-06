@@ -10,7 +10,7 @@ if errorlevel 1 (
     ".venv\Scripts\python.exe" -m pip install -r requirements.txt
     if errorlevel 1 goto failed
 )
-start "" ".venv\Scripts\pythonw.exe" collector.py
+start "" ".venv\Scripts\pythonw.exe" src\collector.py
 exit /b 0
 :failed
 echo Setup failed. Python 3.12 and network access are required.

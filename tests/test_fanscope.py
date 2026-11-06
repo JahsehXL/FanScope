@@ -15,7 +15,7 @@ from collector import Collector, ENDPOINT, FanStore, import_har, normalize_user,
 
 class StoreTests(unittest.TestCase):
     def setUp(self):
-        self.root = Path('.verification') / str(uuid.uuid4())
+        self.root = Path(__file__).resolve().parents[1] / 'work' / 'tests' / str(uuid.uuid4())
         self.store = FanStore(self.root)
         self.url = f'https://www.douyin.com{ENDPOINT}?sec_user_id=example&max_time=0'
 
