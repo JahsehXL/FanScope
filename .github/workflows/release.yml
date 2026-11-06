@@ -19,12 +19,16 @@ jobs:
       - run: python build_exe.py
       - name: Test packaged executable
         shell: pwsh
+        env:
+          FANSCOPE_HOME: ${{ runner.temp }}/fanscope-portable-home
         run: |
           $directory = Get-ChildItem release -Directory | Select-Object -First 1
-          $process = Start-Process -FilePath "$($directory.FullName)\FanScope.exe" -ArgumentList '--diagnose','.verification-release' -Wait -PassThru
+          $destination = Join-Path $env:RUNNER_TEMP 'fanscope-portable-smoke'
+          $process = Start-Process -FilePath "$($directory.FullName)\FanScope.exe" -ArgumentList '--diagnose',('"{0}"' -f $destination) -WorkingDirectory $env:RUNNER_TEMP -Wait -PassThru
           if ($process.ExitCode -ne 0) { throw 'Packaged executable test failed' }
-          $report = Get-Content .verification-release/report.json | ConvertFrom-Json
+          $report = Get-Content (Join-Path $destination 'report.json') | ConvertFrom-Json
           if (-not $report.ok) { throw 'Packaged test report failed' }
+          if ($report.runtime_home -ne [IO.Path]::GetFullPath($env:FANSCOPE_HOME)) { throw 'Custom data directory was not applied' }
       - name: Publish release
         shell: pwsh
         env:
