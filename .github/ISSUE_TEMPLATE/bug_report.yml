@@ -1,0 +1,22 @@
+name: 问题反馈
+description: 提交可复现的软件问题
+body:
+  - type: markdown
+    attributes:
+      value: "请提供脱敏信息。HAR、Cookie、浏览器配置和真实粉丝数据请保留在本机。"
+  - type: input
+    id: version
+    attributes:
+      label: FanScope 版本与 Windows / Edge 版本
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤、预期行为与实际行为
+    validations:
+      required: true
+  - type: textarea
+    id: error
+    attributes:
+      label: 脱敏错误信息

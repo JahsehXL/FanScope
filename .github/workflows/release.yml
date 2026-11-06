@@ -1,0 +1,34 @@
+name: Windows release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: python -m pip install -r requirements-dev.txt
+      - run: python -m unittest test_fanscope -v
+      - run: python verify_collector.py
+      - run: python build_exe.py
+      - name: Test packaged executable
+        shell: pwsh
+        run: |
+          $directory = Get-ChildItem release -Directory | Select-Object -First 1
+          $process = Start-Process -FilePath "$($directory.FullName)\FanScope.exe" -ArgumentList '--diagnose','.verification-release' -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw 'Packaged executable test failed' }
+          $report = Get-Content .verification-release/report.json | ConvertFrom-Json
+          if (-not $report.ok) { throw 'Packaged test report failed' }
+      - name: Publish release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $files = Get-ChildItem release -Recurse -File | Where-Object { $_.Extension -eq '.zip' -or $_.Name -eq 'SHA256SUMS.txt' }
+          gh release create $env:GITHUB_REF_NAME --verify-tag --generate-notes --title "FanScope $env:GITHUB_REF_NAME" @($files.FullName)
