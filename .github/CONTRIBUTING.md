@@ -1,16 +1,17 @@
-# 贡献指南
+# 开发说明
 
-使用 Python 3.12 和 `requirements-dev.txt` 建立本地环境。数据目录位于用户目录，可用 `FANSCOPE_HOME` 指向个人测试位置。
+普通用户可直接使用 [Windows EXE 版](https://github.com/JahsehXL/FanScope/releases/latest)。
 
-在仓库根目录执行以下检查。
+开发环境使用 Python 3.12，在仓库根目录执行。
 
 ```powershell
-python -m unittest tests.test_fanscope tests.test_ui -v
-python scripts/verify_collector.py
+python -m pip install -r requirements-dev.txt
+python src/collector.py
+python scripts/build_exe.py
 ```
 
-浏览器模拟测试需要已安装的 Microsoft Edge，全部网络请求都会被本机测试拦截。只使用虚构账号作为测试数据。
+源码位于 `src/`，构建后程序位于 `app/FanScope.exe`，版本安装包位于 `dist/`。
 
-PR 请说明具体问题、行为变化和验证结果。涉及界面时提供脱敏截图，涉及保存格式时考虑已有批次的兼容性。
+日常自动检查仅验证 Python 语法，发版保留一次 EXE 自检。`tests/` 和模拟采集脚本可在改动相关功能时按需手动运行。
 
-提交范围应为源码、测试、文档和资源。检查暂存区，确保用户数据、登录状态、HAR、个人路径和构建输出留在本机。`.gitignore` 是辅助措施，发布前仍需检查。
+提交时请排除用户数据、登录状态、HAR 和构建产物，反馈截图与日志请脱敏。
