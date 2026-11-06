@@ -28,7 +28,7 @@ def resolve_app_home():
 
 
 APP_HOME = resolve_app_home()
-APP_VERSION = '1.4.2'
+APP_VERSION = '1.4.3'
 ENDPOINT = '/aweme/v1/web/user/follower/list/'
 DEFAULT_SCROLL_INTERVAL = 0.1
 MIN_SCROLL_INTERVAL = 0.05

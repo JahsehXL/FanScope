@@ -1,18 +1,18 @@
 <p align="center"><img src="assets/icon.png" width="96" alt="FanScope"></p>
 <h1 align="center">FanScope · 粉丝观测台</h1>
 <p align="center">Windows 粉丝列表采集与 Excel 排名工具</p>
-<p align="center"><a href="https://github.com/JahsehXL/FanScope/releases/latest"><b>下载 Windows EXE 版</b></a> · <a href="LICENSE">MIT 开源</a></p>
+<p align="center"><a href="https://github.com/JahsehXL/FanScope/releases/latest/download/FanScope.exe"><b>下载 Windows EXE 版</b></a> · <a href="LICENSE">MIT 开源</a></p>
 
 ![软件界面](assets/screenshot.png)
 
 ## 下载使用
 
-1. [下载最新版 Windows ZIP](https://github.com/JahsehXL/FanScope/releases/latest)。
-2. 解压后双击 **FanScope.exe**。需要 Windows 10/11 64 位和 Microsoft Edge。
+1. [下载 FanScope.exe](https://github.com/JahsehXL/FanScope/releases/latest/download/FanScope.exe)。
+2. 双击运行 **FanScope.exe**。需要 Windows 10/11 64 位和 Microsoft Edge。
 3. 点击 **打开采集浏览器**，手动登录抖音并打开目标账号的粉丝列表。
 4. 点击 **开始 / 继续采集**，完成后导出 Excel 排名表。
 
-EXE 已包含运行环境，解压即可使用。完整本地项目中，也可双击 **打开软件.cmd**，程序位于 `app/FanScope.exe`。
+EXE 已包含运行环境和许可证，下载即可使用。完整本地项目中，也可双击 **打开软件.cmd**，程序位于 `app/FanScope.exe`。
 
 ## 主要功能
 
