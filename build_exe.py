@@ -34,7 +34,7 @@ notice.append((ROOT / 'assets' / 'licenses' / 'Roboto-Apache-2.0.txt').read_text
 notice_file.write_text('\n'.join(notice), encoding='utf-8')
 archive = RELEASE / f'FanScope-v{APP_VERSION}-Windows-x64.zip'
 with zipfile.ZipFile(archive, 'w', compression=zipfile.ZIP_DEFLATED) as package:
-    for path in (RELEASE / 'FanScope.exe', ROOT / 'README.md', ROOT / 'LICENSE', notice_file):
+    for path in (RELEASE / 'FanScope.exe', ROOT / 'README.md', ROOT / 'PRIVACY.md', ROOT / 'LICENSE', notice_file):
         package.write(path, arcname=path.name)
 checksum = hashlib.sha256(archive.read_bytes()).hexdigest()
 (RELEASE / 'SHA256SUMS.txt').write_text(f'{checksum}  {archive.name}\n', encoding='ascii')

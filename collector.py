@@ -17,9 +17,16 @@ from tkinter import filedialog, messagebox
 from urllib.parse import parse_qs, urlsplit
 
 ROOT = Path(__file__).resolve().parent
-APP_HOME = Path(os.environ.get('FANSCOPE_HOME', str(
-    Path(os.environ.get('LOCALAPPDATA', str(Path.home() / 'AppData' / 'Local'))) / 'FanScope')))
-APP_VERSION = '1.4.0'
+
+
+def resolve_app_home():
+    local_appdata = os.environ.get('LOCALAPPDATA') or str(Path.home() / 'AppData' / 'Local')
+    configured = os.environ.get('FANSCOPE_HOME') or str(Path(local_appdata) / 'FanScope')
+    return Path(os.path.expandvars(configured)).expanduser().resolve()
+
+
+APP_HOME = resolve_app_home()
+APP_VERSION = '1.4.1'
 ENDPOINT = '/aweme/v1/web/user/follower/list/'
 DEFAULT_SCROLL_INTERVAL = 0.1
 MIN_SCROLL_INTERVAL = 0.05
@@ -115,7 +122,7 @@ def identify_request(url):
 
 class FanStore:
     def __init__(self, root):
-        self.root = Path(root)
+        self.root = Path(root).expanduser().resolve()
         self.directory = None
         self.owner = None
         self.users = {}
@@ -480,7 +487,7 @@ class App:
         if icon_file.exists():
             self.app_icon = tk.PhotoImage(master=self.root, file=str(icon_file))
             self.root.iconphoto(True, self.app_icon)
-        self.data_root = Path(data_root)
+        self.data_root = Path(data_root).expanduser().resolve()
         self.commands, self.events = queue.Queue(), queue.Queue()
         self.exported, self.closing = None, False
         self.worker = threading.Thread(target=Collector(self.commands, self.events, self.data_root).run, daemon=True)

@@ -17,7 +17,9 @@ def run(destination):
         from collector import APP_HOME, App, Collector, ENDPOINT, FanStore, HOVER_SCRIPT
 
         report['runtime_home'] = str(APP_HOME)
+        assert APP_HOME.is_absolute()
         store = FanStore(destination / 'records')
+        assert store.root.is_absolute()
         url = f'https://www.douyin.com{ENDPOINT}?sec_user_id=package-fixture&max_time=0'
         store.accept(url, {'status_code': 0, 'has_more': False, 'followers': [
             {'uid': '1234567890123456789', 'nickname': '=literal', 'follower_count': 10}]})
