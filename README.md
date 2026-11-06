@@ -18,11 +18,12 @@ FanScope 使用专用 Edge 会话，保存网页实际收到的抖音粉丝列�
 在 [Releases](https://github.com/JahsehXL/FanScope/releases/latest) 下载 `FanScope-版本-Windows-x64.zip`，解压后双击 `FanScope.exe`。
 
 - Windows 10/11 64 位，已安装 Microsoft Edge。
-- EXE 已包含 Python 与依赖。压缩包约 50 MB，主要体积来自 Playwright 自带的 Node.js 驱动。
+- EXE 已包含 Python 与依赖。压缩包约 59 MB，主要体积来自 Playwright 的 Node.js 驱动，另含界面控件、Pillow 和字体资源。
 - 发布文件附带 SHA-256 校验值。当前版本尚未配置代码签名。
 
 ## 功能
 
+- 深色桌面工作台，左侧工作区导航、顶部采集操作、独立日志与导出设置。
 - 手动登录，自动识别粉丝列表并滚动，鼠标可移开。
 - 每批数据原子写入本机，按目标账号分目录、按 UID 去重。
 - 分别显示历史数量、本次读取数量、新增数量和历史合计。
@@ -107,7 +108,9 @@ CLI 导入默认导出历史合并范围。GUI 导入使用界面所选范围。
 
 发布包位于 `release/v版本号/`。`FanScope.exe --diagnose <测试输出目录>` 可以检查打包后的界面、Edge 驱动、模拟网络采集和 Excel 导出。模拟验证会拦截全部浏览器请求，使用虚构账号。
 
-Pillow 仅用于构建图标，发布程序通过 Tk 加载 PNG；构建配置排除了 Pillow 运行库。
+界面使用 CustomTkinter 和 Pillow，构建脚本显式收集主题、字体资源及第三方许可证。发布使用单文件 EXE，并通过打包后的自检确认资源可以正常加载。
+
+界面视觉参考了 [Linear 的侧栏层次](https://linear.app/now/behind-the-latest-design-refresh) 和 [Raycast 的操作分组](https://www.raycast.com/blog/a-fresh-look-and-feel)，使用代码重新实现。
 
 布局回归覆盖 100%、125%、150%、200% 的 Tk 缩放模拟及多种窗口尺寸。实际桌面检查使用 125% 系统缩放。不同缩放比例的显示器之间移动窗口时，显示效果仍受 Windows 与 Tk 的系统 DPI 模式影响。
 
