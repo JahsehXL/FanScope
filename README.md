@@ -26,6 +26,8 @@ FanScope 使用专用 Edge 会话，保存网页实际收到的抖音粉丝列�
 - 手动登录，自动识别粉丝列表并滚动，鼠标可移开。
 - 每批数据原子写入本机，按目标账号分目录、按 UID 去重。
 - 分别显示历史数量、本次读取数量、新增数量和历史合计。
+- 按启动时的系统 DPI 缩放字体和控件，窗口初始大小适配桌面工作区。
+- 窄窗口统计卡片切换为两列，低高度窗口收起引导说明，并可滚动访问全部操作。
 - 导出范围可选 **本次采集** 或 **历史合并**，默认本次采集。
 - 接口返回末页后自动导出，也可手动暂停或导出。
 - 支持 `.har` 与 `.har.devtools` 离线导入。
@@ -98,7 +100,7 @@ CLI 导入默认导出历史合并范围。GUI 导入使用界面所选范围。
 
 ```powershell
 .\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
-.\.venv\Scripts\python.exe -m unittest test_fanscope -v
+.\.venv\Scripts\python.exe -m unittest test_fanscope test_ui -v
 .\.venv\Scripts\python.exe verify_collector.py
 .\.venv\Scripts\python.exe build_exe.py
 ```
@@ -106,6 +108,8 @@ CLI 导入默认导出历史合并范围。GUI 导入使用界面所选范围。
 发布包位于 `release/v版本号/`。`FanScope.exe --diagnose <测试输出目录>` 可以检查打包后的界面、Edge 驱动、模拟网络采集和 Excel 导出。模拟验证会拦截全部浏览器请求，使用虚构账号。
 
 Pillow 仅用于构建图标，发布程序通过 Tk 加载 PNG；构建配置排除了 Pillow 运行库。
+
+布局回归覆盖 100%、125%、150%、200% 的 Tk 缩放模拟及多种窗口尺寸。实际桌面检查使用 125% 系统缩放。不同缩放比例的显示器之间移动窗口时，显示效果仍受 Windows 与 Tk 的系统 DPI 模式影响。
 
 ## 已知限制
 

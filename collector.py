@@ -18,7 +18,7 @@ from urllib.parse import parse_qs, urlsplit
 ROOT = Path(__file__).resolve().parent
 APP_HOME = Path(os.environ.get('FANSCOPE_HOME', str(
     Path(os.environ.get('LOCALAPPDATA', str(Path.home() / 'AppData' / 'Local'))) / 'FanScope')))
-APP_VERSION = '1.2.0'
+APP_VERSION = '1.3.0'
 ENDPOINT = '/aweme/v1/web/user/follower/list/'
 DEFAULT_SCROLL_INTERVAL = 0.1
 MIN_SCROLL_INTERVAL = 0.05
@@ -446,13 +446,31 @@ class Collector:
 
 class App:
     def __init__(self, data_root=APP_HOME / 'data'):
+        # Tk scales point fonts automatically. Scale pixel dimensions by the same DPI.
+        if sys.platform == 'win32':
+            import ctypes
+            try:
+                ctypes.windll.user32.SetProcessDpiAwarenessContext(ctypes.c_void_p(-2))
+            except AttributeError:
+                ctypes.windll.user32.SetProcessDPIAware()
         self.root = tk.Tk()
         self.root.title(f'FanScope · 粉丝观测台 {APP_VERSION}')
-        self.root.geometry('1080x760')
-        self.root.minsize(980, 720)
-        background, panel = '#F4F6FA', '#FFFFFF'
-        ink, muted, border = '#182438', '#788397', '#E5EAF1'
-        accent = '#ED3F67'
+        self.ui_scale = self.root.winfo_fpixels('1i') / 96
+        p = self.px
+        screen_width, screen_height = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
+        left, top, right, bottom = 0, 0, screen_width, screen_height
+        if sys.platform == 'win32':
+            from ctypes import wintypes
+            work_area = wintypes.RECT()
+            if ctypes.windll.user32.SystemParametersInfoW(48, 0, ctypes.byref(work_area), 0):
+                left, top, right, bottom = work_area.left, work_area.top, work_area.right, work_area.bottom
+        width = min(p(1160), right - left - p(40))
+        height = min(p(800), bottom - top - p(64))
+        self.root.geometry(f'{width}x{height}+{left + (right-left-width)//2}+{top + (bottom-top-height)//2}')
+        self.root.minsize(min(p(740), width), min(p(460), height))
+        background, panel = '#F5F6F8', '#FFFFFF'
+        ink, muted, border = '#202534', '#6D7483', '#E4E7ED'
+        accent, dark = '#E54668', '#202738'
         self.root.configure(background=background)
         icon_file = ROOT / 'assets' / 'icon-48.png'
         if icon_file.exists():
@@ -462,153 +480,257 @@ class App:
         style = ttk.Style(self.root)
         style.theme_use('clam')
         style.configure('.', font=('Microsoft YaHei UI', 10))
-        style.configure('TButton', padding=(14, 8), background=panel, foreground=ink,
+        style.configure('TButton', padding=(p(12), p(8)), background=panel, foreground=ink,
                         bordercolor=border, lightcolor=panel, darkcolor=panel,
-                        relief='flat', focusthickness=0)
-        style.map('TButton', background=[('active', '#EDF1F7'), ('disabled', '#F1F3F7')],
-                  foreground=[('disabled', '#A8B0BF')])
-        for name, color, hover in [('Accent', accent, '#D92F57'), ('Dark', ink, '#2B3C55')]:
+                        relief='flat', focusthickness=1, focuscolor=accent)
+        style.map('TButton', background=[('disabled', '#EEF0F4'), ('active', '#F0F2F6')],
+                  foreground=[('disabled', '#A3A9B5')], bordercolor=[('focus', accent)])
+        for name, color, hover in [('Accent', accent, '#D23557'), ('Dark', '#333D52', '#414E68')]:
             style.configure(f'{name}.TButton', background=color, foreground='white',
                             bordercolor=color, lightcolor=color, darkcolor=color,
                             font=('Microsoft YaHei UI', 10, 'bold'))
-            style.map(f'{name}.TButton', background=[('active', hover), ('disabled', '#CED5DF')],
-                      foreground=[('disabled', '#FFFFFF')])
-        style.configure('Small.TButton', padding=(10, 6), font=('Microsoft YaHei UI', 9))
-        style.configure('TSpinbox', fieldbackground='#F5F7FB', background=panel,
-                        foreground=ink, bordercolor=border, arrowsize=13, padding=7)
-        style.configure('Vertical.TScrollbar', background='#DDE3EC', troughcolor='#FAFBFD',
-                        bordercolor='#FAFBFD', arrowsize=11, relief='flat')
+            style.map(f'{name}.TButton', background=[('disabled', '#535B6C'), ('active', hover)],
+                      foreground=[('disabled', '#BCC2CC')], bordercolor=[('focus', '#FFC0CF')])
+        style.configure('Small.TButton', padding=(p(10), p(6)), font=('Microsoft YaHei UI', 9))
+        style.configure('TSpinbox', fieldbackground='#F7F8FA', background=panel,
+                        foreground=ink, bordercolor=border, arrowsize=p(13), padding=p(6))
+        style.configure('TCombobox', fieldbackground=panel, background='#F0F2F6',
+                        foreground=ink, bordercolor=border, arrowsize=p(12), padding=p(6))
+        style.map('TCombobox', fieldbackground=[('readonly', panel)],
+                  selectbackground=[('readonly', panel)], selectforeground=[('readonly', ink)])
+        style.configure('Vertical.TScrollbar', background='#CFD5DF', troughcolor=background,
+                        bordercolor=background, arrowsize=p(10), relief='flat')
         self.commands = queue.Queue()
         self.events = queue.Queue()
         self.exported = None
         self.closing = False
         self.worker = threading.Thread(target=Collector(self.commands, self.events, self.data_root).run, daemon=True)
         self.worker.start()
-        header = tk.Frame(self.root, background=panel, padx=28, pady=18)
+
+        header = tk.Frame(self.root, background=panel, padx=p(24), pady=p(12))
         header.pack(fill='x')
         if hasattr(self, 'app_icon'):
-            tk.Label(header, image=self.app_icon, background=panel).pack(side='left', padx=(0, 15))
-        heading = tk.Frame(header, background=panel)
-        heading.pack(side='left')
-        tk.Label(heading, text='FanScope  粉丝观测台', background=panel, foreground=ink,
-                 font=('Microsoft YaHei UI', 20, 'bold')).pack(anchor='w')
-        tk.Label(heading, text='自动采集  /  账号去重  /  粉丝量排名', background=panel,
-                 foreground=muted, font=('Microsoft YaHei UI', 9)).pack(anchor='w', pady=(4, 0))
-        tk.Label(header, text=f'●  本地保存     v{APP_VERSION}', background='#F0F7F4',
-                 foreground='#39836A', padx=13, pady=7, font=('Microsoft YaHei UI', 9)).pack(side='right')
-
-        content = tk.Frame(self.root, background=background, padx=28, pady=18)
-        content.pack(fill='both', expand=True)
-        steps = tk.Frame(content, background=background)
-        steps.pack(fill='x', pady=(0, 14))
-        for index, text in enumerate(['打开采集浏览器', '登录并打开粉丝列表', '开始采集并导出']):
-            tk.Label(steps, text=f'0{index + 1}', background=background, foreground=accent,
-                     font=('Segoe UI', 10, 'bold')).pack(side='left', padx=(0, 8))
-            tk.Label(steps, text=text, background=background, foreground=ink,
-                     font=('Microsoft YaHei UI', 10)).pack(side='left')
-            if index < 2:
-                tk.Label(steps, text='›', background=background, foreground='#BCC5D2',
-                         font=('Segoe UI', 16)).pack(side='left', padx=22)
-
-        metrics = tk.Frame(content, background=background)
-        metrics.pack(fill='x', pady=(0, 16))
-        self.count_values = {}
-        for column, (key, title, caption, color) in enumerate([
-                ('history', '历史已保存', '来自本机历史记录', ink),
-                ('session', '本次读取', '本次收到的去重账号', ink),
-                ('new', '本次新增', '此前从未保存的账号', '#23846B'),
-                ('total', '历史合计', '历史与本次合并去重', accent)]):
-            metrics.columnconfigure(column, weight=1, uniform='cards')
-            card = tk.Frame(metrics, background=panel, padx=18, pady=12,
-                            highlightbackground=border, highlightthickness=1)
-            card.grid(row=0, column=column, sticky='nsew', padx=(0 if column == 0 else 6, 0 if column == 3 else 6))
-            tk.Label(card, text=title, background=panel, foreground=muted,
-                     font=('Microsoft YaHei UI', 10)).pack(anchor='w')
-            self.count_values[key] = tk.StringVar(value='0')
-            tk.Label(card, textvariable=self.count_values[key], background=panel, foreground=color,
-                     font=('Segoe UI', 26, 'bold')).pack(anchor='w', pady=(4, 3))
-            tk.Label(card, text=caption, background=panel, foreground=muted,
-                     font=('Microsoft YaHei UI', 8)).pack(anchor='w')
+            tk.Label(header, image=self.app_icon, background=panel).pack(side='left', padx=(0, p(12)))
+        brand = tk.Frame(header, background=panel)
+        brand.pack(side='left')
+        tk.Label(brand, text='FanScope', background=panel, foreground=ink,
+                 font=('Segoe UI', 16, 'bold')).pack(anchor='w')
+        tk.Label(brand, text='粉丝观测台', background=panel, foreground=muted,
+                 font=('Microsoft YaHei UI', 8)).pack(anchor='w')
+        tk.Label(header, text=f'v{APP_VERSION}', background=panel, foreground=muted,
+                 font=('Segoe UI', 9)).pack(side='right', padx=(p(14), 0))
+        self.import_button = ttk.Button(header, text='导入 HAR', style='Small.TButton', command=self.choose_har)
+        self.import_button.pack(side='right')
+        ttk.Button(header, text='数据目录', style='Small.TButton', command=self.open_data).pack(side='right', padx=p(8))
+        tk.Frame(self.root, height=1, background=border).pack(fill='x')
 
         self.status = tk.StringVar(value='准备就绪 · 请先打开采集浏览器')
-        self.status_label = tk.Label(content, textvariable=self.status, background=background,
-                                     foreground=muted, font=('Microsoft YaHei UI', 9), anchor='w')
-        self.status_label.pack(side='bottom', fill='x', pady=(14, 0))
-        workspace = tk.Frame(content, background=background)
-        workspace.pack(fill='both', expand=True)
-        workspace.columnconfigure(1, weight=1)
-        workspace.rowconfigure(0, weight=1)
-        controls = tk.Frame(workspace, background=panel, padx=20, pady=18,
-                            highlightbackground=border, highlightthickness=1)
-        controls.grid(row=0, column=0, sticky='nsew', padx=(0, 18))
-        tk.Label(controls, text='采集控制', background=panel, foreground=ink,
-                 font=('Microsoft YaHei UI', 12, 'bold')).pack(anchor='w')
-        tk.Label(controls, text='打开列表后，即可自动运行', background=panel, foreground=muted,
-                 font=('Microsoft YaHei UI', 9)).pack(anchor='w', pady=(4, 17))
+        footer = tk.Frame(self.root, background=panel, padx=p(24), pady=p(9))
+        footer.pack(side='bottom', fill='x')
+        tk.Label(footer, text='●', background=panel, foreground='#29967E',
+                 font=('Segoe UI', 10)).pack(side='left', padx=(0, p(9)))
+        self.status_label = tk.Label(footer, textvariable=self.status, background=panel,
+                                     foreground=muted, font=('Microsoft YaHei UI', 9), anchor='w', justify='left')
+        self.status_label.pack(side='left', fill='x', expand=True)
+        footer.bind('<Configure>', lambda event: self.status_label.configure(wraplength=max(p(120), event.width-p(80))))
+
+        # A page scrollbar keeps controls reachable on short laptop screens.
+        viewport = tk.Frame(self.root, background=background)
+        viewport.pack(fill='both', expand=True)
+        self.page = tk.Canvas(viewport, background=background, highlightthickness=0, yscrollincrement=p(24))
+        self.page.pack(side='left', fill='both', expand=True)
+        self.page_scroll = ttk.Scrollbar(viewport, orient='vertical', command=self.page.yview)
+        self.page.configure(yscrollcommand=self.page_scroll.set)
+        self.content = tk.Frame(self.page, background=background, padx=p(24), pady=p(18))
+        self.content_window = self.page.create_window(0, 0, window=self.content, anchor='nw')
+        self.content.columnconfigure(0, weight=1)
+        self.content.rowconfigure(3, weight=1)
+
+        title = tk.Frame(self.content, background=background)
+        title.grid(row=0, column=0, sticky='ew', pady=(0, p(18)))
+        tk.Label(title, text='粉丝数据工作台', background=background, foreground=ink,
+                 font=('Microsoft YaHei UI', 20, 'bold')).pack(anchor='w')
+        self.page_subtitle = tk.Label(title, text='采集、整理与排名，一处完成。', background=background,
+                                      foreground=muted, font=('Microsoft YaHei UI', 10))
+        self.page_subtitle.pack(anchor='w', pady=(p(5), 0))
+
+        steps = tk.Frame(self.content, background='#ECEFF4', padx=p(16), pady=p(10))
+        self.steps = steps
+        steps.grid(row=1, column=0, sticky='ew', pady=(0, p(18)))
+        for column, text in enumerate(['打开浏览器', '登录并打开粉丝列表', '开始采集与导出']):
+            steps.columnconfigure(column, weight=1, uniform='steps')
+            tk.Label(steps, text=f'{column+1:02}   {text}', background='#ECEFF4', foreground='#596277',
+                     font=('Microsoft YaHei UI', 9), anchor='w').grid(row=0, column=column, sticky='ew')
+
+        self.metrics = tk.Frame(self.content, background=background)
+        self.metrics.grid(row=2, column=0, sticky='ew', pady=(0, p(18)))
+        self.metric_cards = []
+        self.metric_numbers = []
+        self.count_values = {}
+        for key, title, caption, color in [
+                ('history', '历史已保存', '来自本机历史记录', ink),
+                ('session', '本次读取', '本次收到的去重账号', ink),
+                ('new', '本次新增', '此前未保存的账号', '#23846B'),
+                ('total', '历史合计', '历史与本次合并去重', accent)]:
+            surface = '#FFF3F6' if key == 'total' else panel
+            card = tk.Frame(self.metrics, background=surface, padx=p(18), pady=p(12),
+                            highlightbackground='#F5D7E0' if key == 'total' else border, highlightthickness=1)
+            tk.Label(card, text=title, background=surface, foreground=muted,
+                     font=('Microsoft YaHei UI', 9)).pack(anchor='w')
+            self.count_values[key] = tk.StringVar(value='0')
+            number = tk.Label(card, textvariable=self.count_values[key], background=surface,
+                              foreground=color, font=('Segoe UI', 28, 'bold'))
+            number.pack(anchor='w', pady=(p(3), 0))
+            self.metric_numbers.append(number)
+            tk.Label(card, text=caption, background=surface, foreground=muted,
+                     font=('Microsoft YaHei UI', 8)).pack(anchor='w')
+            self.metric_cards.append(card)
+
+        self.workspace = tk.Frame(self.content, background=background)
+        self.workspace.grid(row=3, column=0, sticky='nsew')
+        self.workspace.columnconfigure(1, weight=1)
+        self.workspace.rowconfigure(0, weight=1)
+        self.controls = tk.Frame(self.workspace, background=dark, padx=p(18), pady=p(16))
+        self.controls.grid(row=0, column=0, sticky='nsew', padx=(0, p(18)))
+        tk.Label(self.controls, text='采集控制', background=dark, foreground='white',
+                 font=('Microsoft YaHei UI', 13, 'bold')).pack(anchor='w')
+        tk.Label(self.controls, text='打开粉丝列表后开始运行', background=dark, foreground='#B1BACC',
+                 font=('Microsoft YaHei UI', 9)).pack(anchor='w', pady=(p(5), p(12)))
         self.action_buttons = []
-        for label, command, button_style in [('打开采集浏览器', 'open', 'Dark.TButton'),
-                                              ('开始 / 继续采集', 'start', 'Accent.TButton')]:
-            action = self.start_capture if command == 'start' else lambda name=command: self.commands.put((name, None))
-            button = ttk.Button(controls, text=label, style=button_style, command=action)
-            button.pack(fill='x', pady=(0, 10))
+        for label, action, button_style in [
+                ('打开采集浏览器', lambda: self.commands.put(('open', None)), 'Dark.TButton'),
+                ('开始 / 继续采集', self.start_capture, 'Accent.TButton')]:
+            button = ttk.Button(self.controls, text=label, style=button_style, command=action)
+            button.pack(fill='x', pady=(0, p(10)))
             self.action_buttons.append(button)
-        secondary = tk.Frame(controls, background=panel)
-        secondary.pack(fill='x', pady=(0, 18))
+        secondary = tk.Frame(self.controls, background=dark)
+        secondary.pack(fill='x', pady=(0, p(14)))
         for column, (label, command) in enumerate([('暂停采集', 'pause'), ('导出 Excel', 'export')]):
             secondary.columnconfigure(column, weight=1)
-            button = ttk.Button(secondary, text=label, command=lambda name=command: self.commands.put((name, None)))
-            button.grid(row=0, column=column, sticky='ew', padx=(0, 5) if column == 0 else (5, 0))
+            button = ttk.Button(secondary, text=label, style='Dark.TButton',
+                                command=lambda name=command: self.commands.put((name, None)))
+            button.grid(row=0, column=column, sticky='ew', padx=(0, p(4)) if column == 0 else (p(4), 0))
             self.action_buttons.append(button)
-        tk.Frame(controls, height=1, background=border).pack(fill='x', pady=(0, 16))
-        tk.Label(controls, text='滚动间隔', background=panel, foreground=ink,
-                 font=('Microsoft YaHei UI', 10, 'bold')).pack(anchor='w', pady=(0, 9))
-        speed = tk.Frame(controls, background=panel)
+        tk.Frame(self.controls, height=1, background='#3B4355').pack(fill='x', pady=(0, p(12)))
+        tk.Label(self.controls, text='滚动间隔', background=dark, foreground='#DAE0EB',
+                 font=('Microsoft YaHei UI', 9, 'bold')).pack(anchor='w', pady=(0, p(8)))
+        speed = tk.Frame(self.controls, background=dark)
         speed.pack(fill='x')
         self.interval = tk.StringVar(value=f'{DEFAULT_SCROLL_INTERVAL:g}')
-        ttk.Spinbox(speed, from_=MIN_SCROLL_INTERVAL, to=10, increment=0.05, width=6,
-                    textvariable=self.interval).pack(side='left')
-        tk.Label(speed, text='秒', background=panel, foreground=muted).pack(side='left', padx=8)
+        self.speed_control = ttk.Spinbox(speed, from_=MIN_SCROLL_INTERVAL, to=10, increment=0.05, width=6,
+                                          textvariable=self.interval)
+        self.speed_control.pack(side='left')
+        tk.Label(speed, text='秒', background=dark, foreground='#B1BACC').pack(side='left', padx=p(8))
         ttk.Button(speed, text='应用', style='Small.TButton', command=self.apply_speed).pack(side='right')
-        tk.Label(controls, text='加载期间自动等待，鼠标可以移开', background=panel, foreground=muted,
-                 font=('Microsoft YaHei UI', 8)).pack(anchor='w', pady=(10, 0))
+        tk.Label(self.controls, text='加载时等待 · 鼠标可移开', background=dark, foreground='#B1BACC',
+                 justify='left', font=('Microsoft YaHei UI', 8)).pack(anchor='w', pady=(p(12), 0))
 
-        activity = tk.Frame(workspace, background=panel, padx=20, pady=18,
-                            highlightbackground=border, highlightthickness=1)
-        activity.grid(row=0, column=1, sticky='nsew')
-        activity_header = tk.Frame(activity, background=panel)
-        activity_header.pack(fill='x')
-        tk.Label(activity_header, text='采集记录', background=panel, foreground=ink,
-                 font=('Microsoft YaHei UI', 12, 'bold')).pack(side='left')
-        ttk.Button(activity_header, text='查看导出', style='Small.TButton', command=self.open_export).pack(side='right')
-        ttk.Button(activity_header, text='数据目录', style='Small.TButton', command=self.open_data).pack(side='right', padx=8)
-        self.import_button = ttk.Button(activity_header, text='导入 HAR', style='Small.TButton', command=self.choose_har)
-        self.import_button.pack(side='right')
-        export_options = tk.Frame(activity, background=panel)
-        export_options.pack(fill='x', pady=(8, 14))
-        tk.Label(export_options, text='导出范围', background=panel, foreground=muted).pack(side='left', padx=(0, 10))
+        self.activity = tk.Frame(self.workspace, background=panel, padx=p(20), pady=p(18),
+                                 highlightbackground=border, highlightthickness=1)
+        self.activity.grid(row=0, column=1, sticky='nsew')
+        activity_header = tk.Frame(self.activity, background=panel)
+        activity_header.pack(fill='x', pady=(0, p(14)))
+        tk.Label(activity_header, text='运行记录', background=panel, foreground=ink,
+                 font=('Microsoft YaHei UI', 13, 'bold')).pack(side='left')
+        self.view_export_button = ttk.Button(activity_header, text='查看导出 ↗', style='Small.TButton', command=self.open_export)
+        self.view_export_button.pack(side='right')
+        export_options = tk.Frame(self.activity, background=panel)
+        export_options.pack(fill='x', pady=(0, p(14)))
+        tk.Label(export_options, text='导出范围', background=panel, foreground=muted,
+                 font=('Microsoft YaHei UI', 9)).pack(side='left', padx=(0, p(10)))
         self.export_scope = tk.StringVar(value='本次采集')
-        scope_control = ttk.Combobox(export_options, textvariable=self.export_scope,
-                                     values=['本次采集', '历史合并'], state='readonly', width=10)
-        scope_control.pack(side='left')
-        scope_control.bind('<<ComboboxSelected>>', lambda event: self.commands.put((
+        self.scope_control = ttk.Combobox(export_options, textvariable=self.export_scope,
+                                          values=['本次采集', '历史合并'], state='readonly', width=10)
+        self.scope_control.pack(side='left')
+        self.scope_control.bind('<<ComboboxSelected>>', lambda event: self.commands.put((
             'scope', 'session' if self.export_scope.get() == '本次采集' else 'history')))
-        log_frame = tk.Frame(activity, background='#FAFBFD', highlightbackground=border, highlightthickness=1)
+        log_frame = tk.Frame(self.activity, background='#F7F8FA', highlightbackground=border, highlightthickness=1)
         log_frame.pack(fill='both', expand=True)
-        self.log = tk.Text(log_frame, wrap='word', height=7, width=40, background='#FAFBFD',
-                           foreground='#3B4960', relief='flat', borderwidth=0, padx=14, pady=12,
-                           insertbackground=ink, selectbackground='#FBDDE5', spacing1=3, spacing3=6,
+        self.log = tk.Text(log_frame, wrap='word', height=6, width=24, background='#F7F8FA',
+                           foreground='#444E62', relief='flat', borderwidth=0, padx=p(14), pady=p(12),
+                           insertbackground=ink, selectbackground='#FBDDE5', spacing1=p(3), spacing3=p(6),
                            font=('Microsoft YaHei UI', 9))
         scrollbar = ttk.Scrollbar(log_frame, orient='vertical', command=self.log.yview)
         scrollbar.pack(side='right', fill='y')
         self.log.configure(yscrollcommand=scrollbar.set)
         self.log.pack(fill='both', expand=True)
-        self.log.tag_configure('time', foreground='#98A3B4', font=('Consolas', 9))
+        self.log.tag_configure('time', foreground='#8B94A5', font=('Consolas', 9))
         self.log.tag_configure('error', foreground='#CE3658')
-        self.log.insert('end', '等待开始采集\n', 'time')
-        self.log.insert('end', '先打开采集浏览器，登录抖音并进入粉丝列表。\n每批数据都会自动保存到本机。\n')
+        self.log.insert('end', 'READY  /  等待开始\n\n', 'time')
+        self.log.insert('end', '01  打开采集浏览器，手动登录抖音。\n02  进入目标主页，打开粉丝列表。\n03  点击开始，每批数据将自动保存。\n')
         self.log.configure(state='disabled')
+        self.layout_columns = None
+        self.layout_job = None
+        self.page.bind('<Configure>', self.resize_page)
+        self.content.bind('<Configure>', self.resize_page)
+        self.root.bind('<MouseWheel>', self.scroll_page)
+        self.root.bind('<FocusIn>', self.reveal_control, add='+')
         self.root.protocol('WM_DELETE_WINDOW', self.close)
         self.root.after(150, self.poll)
+
+    def px(self, value):
+        return round(value * self.ui_scale)
+
+    def resize_page(self, event=None):
+        if self.layout_job is None:
+            self.layout_job = self.root.after_idle(self.fit_page)
+
+    def fit_page(self):
+        # Keep the pending marker while Tk settles requested sizes after reflow.
+        width, height = self.page.winfo_width(), self.page.winfo_height()
+        if height < self.px(620):
+            self.steps.grid_remove()
+            self.page_subtitle.pack_forget()
+        else:
+            self.steps.grid()
+            self.page_subtitle.pack(anchor='w', pady=(self.px(5), 0))
+        columns = 2 if width < self.px(960) else 4
+        number_width = (width - self.px(48 + (columns-1)*12)) // columns - self.px(48)
+        for label, variable in zip(self.metric_numbers, self.count_values.values()):
+            size = 28
+            while size > 14 and self.root.tk.call('font', 'measure', ('Segoe UI', size, 'bold'), variable.get()) > number_width:
+                size -= 1
+            label.configure(font=('Segoe UI', size, 'bold'))
+        if columns != self.layout_columns:
+            self.layout_columns = columns
+            for column in range(4):
+                self.metrics.columnconfigure(column, weight=1 if column < columns else 0,
+                                              uniform='cards' if column < columns else '')
+            for index, card in enumerate(self.metric_cards):
+                card.grid(row=index // columns, column=index % columns, sticky='nsew',
+                          padx=(0 if index % columns == 0 else self.px(6),
+                                0 if index % columns == columns-1 else self.px(6)),
+                          pady=(0, self.px(10) if columns == 2 and index < 2 else 0))
+        self.page.itemconfigure(self.content_window, width=width)
+        self.content.update_idletasks()
+        required_height = self.content.winfo_reqheight()
+        scroll_needed = required_height > height + 1
+        if scroll_needed and not self.page_scroll.winfo_manager():
+            self.page_scroll.pack(side='right', fill='y')
+        elif not scroll_needed and self.page_scroll.winfo_manager():
+            self.page_scroll.pack_forget()
+        self.page.itemconfigure(self.content_window, width=width, height=max(height, required_height))
+        self.page.configure(scrollregion=(0, 0, width, max(height, required_height)))
+        if not scroll_needed:
+            self.page.yview_moveto(0)
+        self.layout_job = None
+        if (width, height) != (self.page.winfo_width(), self.page.winfo_height()):
+            self.resize_page()
+
+    def scroll_page(self, event):
+        if isinstance(event.widget, (tk.Text, ttk.Spinbox, ttk.Combobox)):
+            return
+        self.page.yview_scroll(-int(event.delta / 120), 'units')
+
+    def reveal_control(self, event):
+        widget = event.widget
+        if not str(widget).startswith(str(self.content) + '.'):
+            return
+        y = widget.winfo_rooty() - self.content.winfo_rooty()
+        top = self.page.canvasy(0)
+        bottom = top + self.page.winfo_height()
+        if y < top or y + widget.winfo_height() > bottom:
+            self.page.yview_moveto(max(0, y - self.px(16)) / max(1, self.content.winfo_height()))
 
     def apply_speed(self):
         try:
@@ -646,6 +768,7 @@ class App:
             if kind == 'count':
                 for key, variable in self.count_values.items():
                     variable.set(f'{value[key]:,}')
+                self.resize_page()
                 self.status.set('数据已更新 · 导出范围可选本次采集或历史合并')
             elif kind == 'exported':
                 self.exported = value

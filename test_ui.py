@@ -1,0 +1,72 @@
+"""Window layout regression checks without changing Windows display settings."""
+
+import tempfile
+import tkinter as tk
+import unittest
+from pathlib import Path
+from unittest.mock import patch
+
+from collector import App
+
+
+class LayoutTests(unittest.TestCase):
+    def settle(self, app, milliseconds=80):
+        # Windows applies window-manager geometry asynchronously.
+        app.root.after(milliseconds, app.root.quit)
+        app.root.mainloop()
+        app.root.update()
+
+    def test_layout_at_window_sizes_and_dpi_scales(self):
+        original_tk = tk.Tk
+        for scale in (1, 1.25, 1.5, 2):
+            with self.subTest(scale=scale), tempfile.TemporaryDirectory() as directory:
+                def create_root():
+                    root = original_tk()
+                    root.tk.call('tk', 'scaling', scale * 96 / 72)
+                    return root
+
+                with patch('collector.tk.Tk', side_effect=create_root):
+                    app = App(Path(directory))
+                try:
+                    self.settle(app)
+                    for width, height in ((1160, 800), (980, 720), (800, 600), (740, 460), (1160, 800)):
+                        with self.subTest(window=(width, height)):
+                            app.root.geometry(f'{app.px(width)}x{app.px(height)}')
+                            self.settle(app)
+                            self.assertEqual(app.layout_columns, 2 if width < 960 else 4)
+                            last_card = app.metric_cards[app.layout_columns - 1]
+                            self.assertGreaterEqual(last_card.winfo_x() + last_card.winfo_width(),
+                                                    app.metrics.winfo_width() - 1)
+                            controls = [*app.action_buttons, app.import_button, app.status_label,
+                                        app.scope_control, app.view_export_button, app.speed_control]
+                            for widget in controls:
+                                self.assertTrue(widget.winfo_ismapped(), str(widget))
+                                self.assertGreaterEqual(widget.winfo_width(), widget.winfo_reqwidth())
+                                self.assertLessEqual(widget.winfo_x() + widget.winfo_width(),
+                                                     widget.master.winfo_width())
+                            app.page.yview_moveto(1)
+                            app.root.update()
+                            self.assertGreaterEqual(app.page.canvasy(0) + app.page.winfo_height(),
+                                                    app.content.winfo_height() - 2)
+                            app.page.yview_moveto(0)
+                    # Long counts must fit when four cards share a narrow window.
+                    app.root.geometry(f'{app.px(980)}x{app.px(720)}')
+                    app.events.put(('count', dict.fromkeys(app.count_values, 123456789)))
+                    self.settle(app, 200)
+                    for number in app.metric_numbers:
+                        self.assertLessEqual(number.winfo_reqwidth(),
+                                             number.master.winfo_width() - app.px(36))
+                    # Tab focus reveals controls below the current page viewport.
+                    app.root.geometry(f'{app.px(740)}x{app.px(460)}')
+                    self.settle(app)
+                    app.page.yview_moveto(0)
+                    app.speed_control.focus_force()
+                    app.root.update()
+                    self.assertGreater(app.page.canvasy(0), 0)
+                finally:
+                    app.close()
+                    app.root.mainloop()
+
+
+if __name__ == '__main__':
+    unittest.main()

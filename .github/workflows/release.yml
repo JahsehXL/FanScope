@@ -14,7 +14,7 @@ jobs:
           python-version: '3.12'
           cache: pip
       - run: python -m pip install -r requirements-dev.txt
-      - run: python -m unittest test_fanscope -v
+      - run: python -m unittest test_fanscope test_ui -v
       - run: python verify_collector.py
       - run: python build_exe.py
       - name: Test packaged executable
